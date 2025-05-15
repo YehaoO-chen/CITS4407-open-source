@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Check the number of arguments
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <input_file>"
+    exit 1
+fi
+
+input_file="$1"
+
+# Check if file exists and is readable
+if [ ! -r "$input_file" ]; then
+    echo "Error: Cannot read file '$input_file'" >&2
+    exit 2
+fi
+
+# Calculate the maximum ID value in advance, as this information cannot be shared within the pipeline
+max_id=$(awk -F';' 'NR > 1 && $1 != "" {if(int($1) > max) max = int($1)} END {print max}' "$input_file")
+echo "Current maximum ID: $max_id" >&2
+
+cat "$input_file" | 
+  sed 's/;/\t/g' |                       # Convert semicolons to tabs
+  tr -d '\r' |                           # Remove carriage returns (CR)
+  sed -E 's/([0-9]),([0-9])/\1.\2/g' |   # Replace commas with periods in floating point numbers
+  tr -cd '\000-\177' |                   # Delete non-ASCII characters
+  awk -F'\t' -v max="$max_id" '          # Replace empty IDs
+    BEGIN {
+        OFS="\t";
+        next_id = max + 1;
+    }
+    {
+        if (NR > 1 && $1 == "") {
+            $1 = next_id++;
+            print "Created new ID at line " NR ": " $1 > "/dev/stderr";
+        }
+        print;
+    }
+    END {
+        print "Total new IDs created: " (next_id - max - 1) > "/dev/stderr";
+    }'
