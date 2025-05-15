@@ -2,8 +2,14 @@
 
 # Check the number of arguments
 if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 <input_file>"
+    echo "Usage: $0 <input_file>" >&2
     exit 1
+fi
+
+# Check if file exists and is readable
+if [ ! -r "$input_file" ]; then
+    echo "Error: Cannot read file '$input_file'" >&2
+    exit 2
 fi
 
 input_file="$1"
