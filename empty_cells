@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Check the number of arguments
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <input_file>" >&2
+    exit 1
+fi
+
+# Check if file exists and is readable
+if [ ! -r "$input_file" ]; then
+    echo "Error: Cannot read file '$input_file'" >&2
+    exit 2
+fi
+
+input_file="$1"
+delimiter=";"
+
+# Use AWK to process the entire file to avoid the inefficiency of Bash loops
+awk -F"$delimiter" '
+BEGIN {
+    # Initialize variables
+}
+NR == 1 {
+    # Process the header row and store column names
+    for (i = 1; i <= NF; i++) {
+        columns[i] = $i
+    }
+}
+NR > 1 {
+    # Process data rows
+    for (i = 1; i <= NF; i++) {
+        if ($i == "") {
+            empty_counts[i]++
+        }
+    }
+}
+END {
+    # Output the results
+    for (i = 1; i <= length(columns); i++) {
+        print columns[i] ": " (empty_counts[i] ? empty_counts[i] : 0)
+    }
+}' "$input_file"
