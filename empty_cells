@@ -19,9 +19,11 @@ delimiter=";"
 awk -F"$delimiter" '
 BEGIN {
     # Initialize variables
+    col_count = 0
 }
 NR == 1 {
     # Process the header row and store column names
+    col_count = NF
     for (i = 1; i <= NF; i++) {
         columns[i] = $i
     }
@@ -36,7 +38,7 @@ NR > 1 {
 }
 END {
     # Output the results
-    for (i = 1; i <= length(columns); i++) {
-        print columns[i] ": " (empty_counts[i] ? empty_counts[i] : 0)
+    for (i = 1; i <= col_count; i++) {
+        print columns[i] ": " empty_counts[i]
     }
 }' "$input_file"
