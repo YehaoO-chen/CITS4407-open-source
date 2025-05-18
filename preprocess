@@ -2,7 +2,7 @@
 
 # Check the number of arguments
 if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 <input_file>" >&2
+    echo "Usage: $0 <input_file>"
     exit 1
 fi
 
@@ -16,7 +16,6 @@ fi
 
 # Calculate the maximum ID value in advance, as this information cannot be shared within the pipeline
 max_id=$(awk -F';' 'NR > 1 && $1 != "" {if(int($1) > max) max = int($1)} END {print max}' "$input_file")
-echo "Current maximum ID: $max_id" >&2
 
 cat "$input_file" | 
   sed 's/;/\t/g' |                       # Convert semicolons to tabs
@@ -31,10 +30,7 @@ cat "$input_file" |
     {
         if (NR > 1 && $1 == "") {
             $1 = next_id++;
-            print "Created new ID at line " NR ": " $1 > "/dev/stderr";
         }
         print;
     }
-    END {
-        print "Total new IDs created: " (next_id - max - 1) > "/dev/stderr";
-    }'
+'
