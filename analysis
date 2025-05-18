@@ -1,0 +1,117 @@
+#!/bin/bash
+
+# Script to analyze board game data
+# Usage: ./analysis input_file
+
+# Check if input file is provided
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <input_file>" >&2
+    exit 1
+fi
+
+input_file="$1"
+
+# Check if file exists and is readable
+if [ ! -r "$input_file" ]; then
+    echo "Error: Cannot read file '$input_file'" >&2
+    exit 2
+fi
+
+# Create temporary files
+temp_mechanics=$(mktemp)
+temp_domains=$(mktemp)
+temp_year_rating=$(mktemp)
+temp_complexity_rating=$(mktemp)
+
+# Clean up on exit
+trap 'rm -f "$temp_mechanics" "$temp_domains" "$temp_year_rating" "$temp_complexity_rating"' EXIT
+
+# Extract all data in a single pass
+awk -F"\t" '
+NR == 1 {
+    # Find column indexes
+    for (i = 1; i <= NF; i++) {
+        if ($i == "Mechanics") mechanics_col = i
+        if ($i == "Domains") domains_col = i
+        if ($i == "Year Published") year_col = i
+        if ($i == "Rating Average") rating_col = i
+        if ($i == "Complexity Average") complexity_col = i
+    }
+    next
+}
+
+{
+    # Process mechanics
+    if ($mechanics_col != "") {
+        split($mechanics_col, mechanics_arr, ",")
+        for (i in mechanics_arr) {
+            mechanic = mechanics_arr[i]
+            gsub(/^[ \t]+|[ \t]+$/, "", mechanic)
+            if (mechanic != "") print mechanic > "'$temp_mechanics'"
+        }
+    }
+    
+    # Process domains
+    if ($domains_col != "") {
+        split($domains_col, domains_arr, ",")
+        for (i in domains_arr) {
+            domain = domains_arr[i]
+            gsub(/^[ \t]+|[ \t]+$/, "", domain)
+            if (domain != "") print domain > "'$temp_domains'"
+        }
+    }
+    
+    # Process year and rating
+    if ($year_col ~ /^[0-9]+$/ && $rating_col ~ /^[0-9]+(\.?[0-9]*)$/) {
+        print $year_col, $rating_col > "'$temp_year_rating'"
+    }
+    
+    # Process complexity and rating
+    if ($complexity_col ~ /^[0-9]+(\.?[0-9]*)$/ && $rating_col ~ /^[0-9]+(\.?[0-9]*)$/) {
+        print $complexity_col, $rating_col > "'$temp_complexity_rating'"
+    }
+}' "$input_file"
+
+# Count and find most popular mechanics
+most_popular_mechanic=$(sort "$temp_mechanics" | uniq -c | sort -nr | head -1)
+mechanic_name=$(echo "$most_popular_mechanic" | sed 's/^ *[0-9]* *//')
+mechanic_count=$(echo "$most_popular_mechanic" | awk '{print $1}')
+
+# Count and find most popular domain
+most_popular_domain=$(sort "$temp_domains" | uniq -c | sort -nr | head -1)
+domain_name=$(echo "$most_popular_domain" | sed 's/^ *[0-9]* *//')
+domain_count=$(echo "$most_popular_domain" | awk '{print $1}')
+
+# Function to calculate correlation
+calculate_correlation() {
+    awk '
+    BEGIN {
+        sum_x = 0; sum_y = 0; sum_xy = 0; sum_x2 = 0; sum_y2 = 0; n = 0
+    }
+    {
+        x = $1; y = $2
+        sum_x += x; sum_y += y; sum_xy += x * y
+        sum_x2 += x * x; sum_y2 += y * y; n++
+    }
+    END {
+        numerator = n * sum_xy - sum_x * sum_y
+        denominator = sqrt((n * sum_x2 - sum_x * sum_x) * (n * sum_y2 - sum_y * sum_y))
+        
+        if (denominator == 0) {
+            print "undefined"
+        } else {
+            printf "%.3f", numerator / denominator
+        }
+    }' "$1"
+}
+
+# Calculate correlations
+year_rating_correlation=$(calculate_correlation "$temp_year_rating")
+complexity_rating_correlation=$(calculate_correlation "$temp_complexity_rating")
+
+# Print results
+echo "The most popular game mechanic is $mechanic_name found in $mechanic_count games"
+echo "The most popular game domain is $domain_name found in $domain_count games"
+echo ""
+echo "The correlation between the year of publication and the average rating is $year_rating_correlation"
+echo "The correlation between the complexity of a game and its average rating is $complexity_rating_correlation"
