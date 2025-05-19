@@ -78,10 +78,33 @@ if [ ! -s "$temp_mechanics" ]; then
     mechanic_name="Unknown"
     mechanic_count="0"
 else
-    # Count and find most popular mechanics
-    most_popular_mechanic=$(sort "$temp_mechanics" | uniq -c | sort -nr | head -1)
-    mechanic_name=$(echo "$most_popular_mechanic" | sed 's/^ *[0-9]* *//')
-    mechanic_count=$(echo "$most_popular_mechanic" | awk '{print $1}')
+    # Count mechanics and create a temporary sorted file
+    temp_sorted_mechanics=$(mktemp)
+    sort "$temp_mechanics" | uniq -c | sort -nr > "$temp_sorted_mechanics"
+    
+    # Get the highest count
+    highest_count=$(head -1 "$temp_sorted_mechanics" | awk '{print $1}')
+    
+    # Find all mechanics with the highest count
+    mechanics_list=""
+    while read -r line; do
+        count=$(echo "$line" | awk '{print $1}')
+        if [ "$count" -eq "$highest_count" ]; then
+            mechanic=$(echo "$line" | sed 's/^ *[0-9]* *//')
+            if [ -z "$mechanics_list" ]; then
+                mechanics_list="$mechanic"
+            else
+                mechanics_list="$mechanics_list, $mechanic"
+            fi
+        else
+            # Exit once we hit a lower count
+            break
+        fi
+    done < "$temp_sorted_mechanics"
+    
+    mechanic_name="$mechanics_list"
+    mechanic_count="$highest_count"
+    rm -f "$temp_sorted_mechanics"
 fi
 
 # Handle empty files for domains
@@ -89,10 +112,33 @@ if [ ! -s "$temp_domains" ]; then
     domain_name="Unknown"
     domain_count="0"
 else
-    # Count and find most popular domain
-    most_popular_domain=$(sort "$temp_domains" | uniq -c | sort -nr | head -1)
-    domain_name=$(echo "$most_popular_domain" | sed 's/^ *[0-9]* *//')
-    domain_count=$(echo "$most_popular_domain" | awk '{print $1}')
+    # Count domains and create a temporary sorted file
+    temp_sorted_domains=$(mktemp)
+    sort "$temp_domains" | uniq -c | sort -nr > "$temp_sorted_domains"
+    
+    # Get the highest count
+    highest_count=$(head -1 "$temp_sorted_domains" | awk '{print $1}')
+    
+    # Find all domains with the highest count
+    domains_list=""
+    while read -r line; do
+        count=$(echo "$line" | awk '{print $1}')
+        if [ "$count" -eq "$highest_count" ]; then
+            domain=$(echo "$line" | sed 's/^ *[0-9]* *//')
+            if [ -z "$domains_list" ]; then
+                domains_list="$domain"
+            else
+                domains_list="$domains_list, $domain"
+            fi
+        else
+            # Exit once we hit a lower count
+            break
+        fi
+    done < "$temp_sorted_domains"
+    
+    domain_name="$domains_list"
+    domain_count="$highest_count"
+    rm -f "$temp_sorted_domains"
 fi
 
 # Function to calculate correlation
