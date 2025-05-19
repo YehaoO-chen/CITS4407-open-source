@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Script to analyze board game data
-# Usage: ./analysis input_file
-
 # Check if input file is provided
 if [ $# -ne 1 ]; then
     echo "Usage: $0 <input_file>" >&2
@@ -42,7 +39,7 @@ NR == 1 {
 
 {
     # Process mechanics
-    if ($mechanics_col != "") {
+    if (mechanics_col > 0 && $mechanics_col != "") {
         split($mechanics_col, mechanics_arr, ",")
         for (i in mechanics_arr) {
             mechanic = mechanics_arr[i]
@@ -52,7 +49,7 @@ NR == 1 {
     }
     
     # Process domains
-    if ($domains_col != "") {
+    if (domains_col > 0 && $domains_col != "") {
         split($domains_col, domains_arr, ",")
         for (i in domains_arr) {
             domain = domains_arr[i]
@@ -62,25 +59,41 @@ NR == 1 {
     }
     
     # Process year and rating
-    if ($year_col ~ /^[0-9]+$/ && $rating_col ~ /^[0-9]+(\.?[0-9]*)$/) {
-        print $year_col, $rating_col > "'$temp_year_rating'"
+    if (year_col > 0 && rating_col > 0) {
+        if ($year_col ~ /^[0-9]+$/ && $rating_col ~ /^[0-9]+(\.?[0-9]*)$/) {
+            print $year_col, $rating_col > "'$temp_year_rating'"
+        }
     }
     
     # Process complexity and rating
-    if ($complexity_col ~ /^[0-9]+(\.?[0-9]*)$/ && $rating_col ~ /^[0-9]+(\.?[0-9]*)$/) {
-        print $complexity_col, $rating_col > "'$temp_complexity_rating'"
+    if (complexity_col > 0 && rating_col > 0) {
+        if ($complexity_col ~ /^[0-9]+(\.?[0-9]*)$/ && $rating_col ~ /^[0-9]+(\.?[0-9]*)$/) {
+            print $complexity_col, $rating_col > "'$temp_complexity_rating'"
+        }
     }
 }' "$input_file"
 
-# Count and find most popular mechanics
-most_popular_mechanic=$(sort "$temp_mechanics" | uniq -c | sort -nr | head -1)
-mechanic_name=$(echo "$most_popular_mechanic" | sed 's/^ *[0-9]* *//')
-mechanic_count=$(echo "$most_popular_mechanic" | awk '{print $1}')
+# Handle empty files for mechanics
+if [ ! -s "$temp_mechanics" ]; then
+    mechanic_name="Unknown"
+    mechanic_count="0"
+else
+    # Count and find most popular mechanics
+    most_popular_mechanic=$(sort "$temp_mechanics" | uniq -c | sort -nr | head -1)
+    mechanic_name=$(echo "$most_popular_mechanic" | sed 's/^ *[0-9]* *//')
+    mechanic_count=$(echo "$most_popular_mechanic" | awk '{print $1}')
+fi
 
-# Count and find most popular domain
-most_popular_domain=$(sort "$temp_domains" | uniq -c | sort -nr | head -1)
-domain_name=$(echo "$most_popular_domain" | sed 's/^ *[0-9]* *//')
-domain_count=$(echo "$most_popular_domain" | awk '{print $1}')
+# Handle empty files for domains
+if [ ! -s "$temp_domains" ]; then
+    domain_name="Unknown"
+    domain_count="0"
+else
+    # Count and find most popular domain
+    most_popular_domain=$(sort "$temp_domains" | uniq -c | sort -nr | head -1)
+    domain_name=$(echo "$most_popular_domain" | sed 's/^ *[0-9]* *//')
+    domain_count=$(echo "$most_popular_domain" | awk '{print $1}')
+fi
 
 # Function to calculate correlation
 calculate_correlation() {
@@ -94,11 +107,16 @@ calculate_correlation() {
         sum_x2 += x * x; sum_y2 += y * y; n++
     }
     END {
+        if (n < 2) {
+            print "0"  # Default to 0 if insufficient data
+            exit
+        }
+        
         numerator = n * sum_xy - sum_x * sum_y
         denominator = sqrt((n * sum_x2 - sum_x * sum_x) * (n * sum_y2 - sum_y * sum_y))
         
         if (denominator == 0) {
-            print "undefined"
+            print "0"  # Default to 0 if undefined
         } else {
             printf "%.3f", numerator / denominator
         }
