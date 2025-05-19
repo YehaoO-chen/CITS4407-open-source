@@ -6,25 +6,66 @@ This repository contains three Shell scripts developed for the CITS4407 course, 
 
 ### 1. Data Integrity Checker
 
+#### Setup
+
+```bash
+chmod +x empty_cells
+```
+
+#### Execute
+
 ```bash
 ./empty_cells <input_file>
+```
+
+#### Sample
+
+```bash
+./empty_cells sample.tsv
 ```
 
 This script analyzes semicolon-delimited data files and reports the number of empty values in each column.
 
 ### 2. Data Cleaner
 
+#### Setup
+
+```bash
+chmod +x preprocess
+```
+
+#### Execute
+
 ```bash
 ./preprocess <input_file>
 ```
 
-This script performs multiple cleaning operations on semicolon-delimited data files to make them more suitable for analysis.
+#### Sample
 
+```bash
+./preprocess sample.tsv
+```
+
+This script performs multiple cleaning operations on semicolon-delimited data files to make them more suitable for analysis.
 
 ### 3. Board Game Data Analyzer
 
+#### Setup
+
+```bash
+chmod +x analysis
+```
+
+#### Execute
+
 ```bash
 ./analysis <input_file>
+```
+
+#### Sample
+
+```bash
+./analysis sample.tsv
 ```
 
 This script is designed to analyze board game datasets and provide various statistical insights.
